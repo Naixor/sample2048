@@ -1010,6 +1010,73 @@
 				}
 			}
 
+			var TouchEvent = {
+				init: function (div, game) {
+					this.touch = ("creatTouch" in document);
+					this.Start = this.touch ? "toucheStart" : "mousedown";
+					this.End = this.touch ? "touchEnd" : "mouseup";
+					this.Move;
+					this.mainDiv = document.getElementById(div);
+					this.bind(game);
+				},
+				bind: function (game) {
+					var x1, x2, y1, y2;
+					this.mainDiv["on"+this.Start] = function (e) {
+						e.preventDefault();
+						var touch = this.touch ? e.touches[0] : e;
+						x1 = touch.clientX;
+						y1 = touch.clientY;
+					}
+					this.mainDiv["on" +this.End] = function (e) {
+						e.preventDefault();
+						var touch = this.touch ? e.touches[0] : e;
+						x2 = touch.clientX;
+						y2 = touch.clientY;
+					
+
+						if (Math.abs(x1-x2) > Math.abs(y1-y2)) {
+							//left or right
+							if ((x1-x2) < 0) { //right
+								game.rightEvent(40);
+								if (game.newOneCellCheck())
+									game.newOneCell(function (x, y){
+										game.setCell(x, y, true);
+									});
+								game.updateView();
+							}
+							else if((x1-x2) >0) { //left
+								game.leftEvent(40);
+								if (game.newOneCellCheck())
+									game.newOneCell(function (x, y){
+										game.setCell(x, y, true);
+									});
+								game.updateView();
+							}
+						}
+						else {
+									// up or down
+							if(y1-y2 > 0) { //up
+								game.upEvent(40);
+								if (game.newOneCellCheck())
+									game.newOneCell(function (x, y){
+										game.setCell(x, y, true);
+									});
+								game.updateView();
+							}
+							else if (y1-y2 <0){ //down
+								game.downEvent(40);
+								if (game.newOneCellCheck())
+									game.newOneCell(function (x, y){
+										game.setCell(x, y, true);
+									});
+								game.updateView();
+								
+							}
+						}
+					}
+				}
+			};
+
 			(function () {
 				$(document).ready(function($) {
 					// $('#gameState_Div').hide();
@@ -1035,6 +1102,8 @@
 						game.setCellMartrix(pos1, pos2);
 					});
 					game.updateView();
+
+					TouchEvent.init("contain", game);
 					
 					game.EventUtil.addHandler(newGame, "click", function (event) {
 						game.cellMartrix = Start.initCellArray(4, function (num) {
@@ -1088,6 +1157,7 @@
 							game.updateView();
 						}
 					});
+				
 				});
 			})();
 
