@@ -1161,6 +1161,7 @@
 					game.EventUtil.addHandler(newGame, "click", function (event) {
 						game.cellMartrix = Start.initCellArray(4, function (num) {
 							game.cellNum = num;
+							game.score = 0;
 						});
 						game.RandomPos(game.cellMartrix, function (pos1, pos2) {
 							game.setCellMartrix(pos1, pos2);
