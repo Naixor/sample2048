@@ -1,0 +1,1163 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns:wb="http://open.weibo.com/wb">
+	<meta charset="UTF-8"/>
+
+<meta id="viewport" name="viewport" content=""/>
+	<meta content="yes" name="apple-mobile-web-app-capable">
+
+	<link rel="Shortcut Ico" href="dhllogo.ico" />
+	<head>
+		<title>F1极速送达挑战赛</title>
+		<link rel="stylesheet" type="text/css" href="css/styleWait.css" />
+		<script src="jquery.js"></script>
+		<script src=" http://tjs.sjs.sinajs.cn/open/api/js/wb.js?appkey=1317052570&debug=true" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript">
+
+			var UerWBid = ""; 
+
+			var Start = {
+				initCellArray :function(cellNum, callback) {
+				/*
+				*	argument is one for dimensional size of your two-dimensional Array
+				*	you will get the return value as a two-dimensional array
+				*/
+					var cell = new Array(cellNum);
+					for (var i = cellNum - 1; i >= 0; i--) {
+						cell[i] = new Array(cellNum);
+						for (var j = cellNum -1; j >=0; j--) {
+							var cellEle = {
+								data : 0,
+								active: false,
+								isNew: false,
+								pos: {
+									x:i,
+									y:j
+								}
+							}
+							cell[i][j] = cellEle;
+							
+						}
+					};
+					callback(cellNum);
+					return cell;
+				},
+
+			}
+
+			var LocalStorageManager = {
+				init: function () {
+					if (this.checkSuport())
+						window.localStorage.setItem('best', 0);
+					else 
+						$('#best_Div').html('您的浏览器不支持此功能~');
+				},
+				checkSuport: function () {
+					if (window.localStorage) {
+						
+						return true;
+					}
+					else {
+						return false;
+					}
+				},
+				showBest: function (ele) {
+					//console.log("Bset:"+localStorage.best);
+					if (ele.html()) {
+						ele.html(localStorage.best);
+					}
+					else if(ele.innerHTML) {
+						ele.innerHTML = localStorage.best;
+					}
+				},
+				setBest: function (score){
+					if (score > window.localStorage.getItem('best'))
+						window.localStorage.setItem('best', score);
+					console.log("localStorage:"+localStorage.best);
+				}
+			}
+
+			var Event = {
+				preventDefault: function (e) {
+					e = window.event || e;
+					if (window.event)
+						e.returnValue = false;					
+					else
+						e.preventDefault();
+				},
+				stopPropagation: function (e) {
+					e = window.event || e;
+					if (window.event) {
+						e.cancelBubble = true;
+					}
+					else
+						e.stopPropagation();
+				}
+			}
+
+			var tagText = {
+				t2: '',
+				t4: '<div class="text"><a>澳大利亚</a></div><div class="back">4</div>',
+				t8: '<div class="text"><a>中国</a><div class="back">8</div>',
+				t16: '<div class="text"><a>西班牙</a><div class="back">16</div>',
+				t32: '<div class="text"><a>英国</a><div class="back">32</div>',
+				t64: '<div class="text"><a>德国</a><div class="back">64</div>',
+				t128: '<div class="text"><a>比利时</a><div class="back">128</div>',
+				t256: '<div class="text"><a>新加坡</a><div class="back">256</div>',
+				t512: '<div class="text"><a>俄罗斯</a><div class="back">512</div>',
+				t1024: '<div class="text"><a>阿布扎比</a><div class="back">1024</div>',
+				t2048: ''
+			}
+
+			function Game() {
+				this.cellNum = 0;
+				this.score = 0;
+
+				this.cellMartrix;
+				this.scoreLabel;
+				this.scoreView;
+				this.gameView;
+				this.gameStateView;
+
+				this.canNewOne = false;
+				this.end = false;
+				this.isWin = false;
+
+				this.leftPos = [14, 132, 250, 360];
+				this.topPos = [155, 269,383, 497];
+
+				this.setGameView = function (view) {
+					this.gameView = $(view);
+				};
+				this.setCell = function (x, y, ok) {
+					this.cellMartrix[x][y].data = this.RandomNum();
+					this.cellMartrix[x][y].isNew = ok;
+				};
+				this.setCellMartrix = function () {
+					var args = arguments.length;
+					//console.log('Game.setCellMartrix arguments:'+args);
+					if(args == 1) {
+						if ((arguments[0]) instanceof Array && (arguments[0])[0] instanceof Array) {
+							this.cellMartrix = arguments[0];
+						}
+						else
+							throw new Error('argument for one is not valiable');
+					}
+					else if(args > 1) {
+						var n = 2;
+						for (var i = args - 1; i >= 0; i--) {
+							if (arguments[i] instanceof Object) {
+								
+								var x = arguments[i].x;
+								var y = arguments[i].y
+								if (n == 2) {
+									this.cellMartrix[x][y].data = this.RandomNum();
+								}else {
+									this.cellMartrix[x][y].data = 2;
+								}
+								n = this.cellMartrix[x][y].data;
+								this.cellMartrix[x][y].active = true;
+								
+							}
+						};
+					}
+				};
+				this.getBlankCell = function() {
+				/*
+				* argument is one for two-dimensional Array like([n][n]) ,the return value is a one-dimensional Array of empty cells
+				*/
+					var len = this.cellNum;
+					var blankCell = new Array();
+					var blankNum = 0;
+					for (var i = 0;i < len;i++) {
+						for (var j = 0;j < len;j++) {
+							if (this.cellMartrix[i][j].data == 0) {
+								blankCell[blankNum] = this.cellMartrix[i][j];
+								//console.log(blankCell[blankNum].pos.x + "," + blankCell[blankNum].pos.y);
+								blankNum++;
+							}
+						}	
+					}
+					return blankCell;
+				};
+				this.random = function (n) {
+					var rnum = Math.ceil(Math.random()*n) ;
+					return rnum;
+				};
+				this.RandomNum = function () {
+					var re = this.random(2)*2;
+					return re;
+				}
+				this.RandomPos = function (array, callback) {//如果传入的是二维数组直接random出来两个点针对游戏刚开始，如果是一个一维数组则传入为剩余空白点的数组
+					if (array[0] instanceof Array) {
+						var xlen = array.length;
+						var ylen = array[0].length;
+
+						var pos1 = {x:0, y:0}, pos2 = {x:0, y:0};
+
+						pos1.x = this.random(xlen)-1;
+						pos1.y = this.random(ylen)-1;
+						do{
+							pos2.x = this.random(xlen)-1;
+							pos2.y = this.random(ylen)-1;
+								
+						}while (pos1.x == pos2.x || pos1.y == pos2.y)
+
+						callback(pos1, pos2);
+					}
+					else {
+						//console.log(">>>>"+array.length);
+						callback(array[this.random(array.length-1)]);
+					}
+				};
+				this.addPointEvent = function (scoreAdd) {
+					this.score += scoreAdd;
+					if (scoreAdd) {
+						this.scoreView.find('.scoreAdd').remove();
+
+						this.scoreView.append('<div id="scoreAdd" class="scoreAdd">+ '
+							+scoreAdd
+							+'</div>');
+					}
+					
+				};
+				this.leftEvent = function (speed) {
+					this.canNewOne = false;
+					var s = 0
+					for (var i = 0;i < this.cellNum;i++) {
+						var pre = 0;
+						
+						for (var j = 0;j < this.cellNum;j++) {
+							if (j != pre && this.cellMartrix[i][pre].data == this.cellMartrix[i][j].data) {
+								/*
+								*合并cell事件
+								*/
+								if (this.cellMartrix[i][j].data != 0) {
+									this.cellMartrix[i][pre].data += this.cellMartrix[i][j].data;
+									s = this.cellMartrix[i][pre].data + s;
+									this.cellMartrix[i][pre].active = true;
+									this.cellMartrix[i][j].data = 0;
+									this.gameView.find('.grid-'+i+'-'+j).animate({
+										opacity: '0.0',
+										left: this.leftPos[pre]
+									},speed, function() {
+										/* stuff to do after animation is complete */
+										
+									});
+									this.gameView.find('.grid-'+i+'-'+j).remove();
+									this.gameView.find('.grid-'+i+'-'+pre).remove();
+									pre++;
+
+									this.canNewOne = true;
+
+								}
+							}
+							else if (this.cellMartrix[i][j].data != 0 && this.cellMartrix[i][pre].data != this.cellMartrix[i][j].data) {
+								if (this.cellMartrix[i][pre].data != 0) {
+									pre = pre +1;
+									if (pre != j) {
+										this.gameView.find('.grid-'+i+'-'+j).animate({
+										opacity: '0.0',
+										left: this.leftPos[pre]},
+										speed, function() {
+										/* stuff to do after animation is complete */
+										});
+										this.cellMartrix[i][pre].data = this.cellMartrix[i][j].data;
+										this.cellMartrix[i][j].data = 0;
+										this.canNewOne = true;
+									}
+
+									this.gameView.find('.grid-'+i+'-'+j).remove();
+								}
+								else if (this.cellMartrix[i][pre].data == 0) {
+									this.gameView.find('.grid-'+i+'-'+j).animate({
+										opacity: '0.0',
+										left: this.leftPos[pre]
+									},speed, function() {
+										
+									});
+									this.gameView.find('.grid-'+i+'-'+j).remove();
+									this.cellMartrix[i][pre].data = this.cellMartrix[i][j].data;
+									this.cellMartrix[i][j].data = 0;
+									this.cellMartrix[i][pre].active = false;
+
+									this.canNewOne = true;
+								}
+							}
+							else if (this.cellMartrix[i][j] == 0 && this.cellMartrix[i][pre].data != this.cellMartrix[i][j].data) {
+
+							}
+							else {
+								this.gameView.find('.grid-'+i+'-'+pre).remove();
+							}		
+						}
+					}
+					//console.log("s:"+s);
+					this.addPointEvent(s);
+				};
+				this.rightEvent = function (speed) {
+					this.canNewOne = false;
+					var s =0;
+					for (var i = 0;i < this.cellNum;i++) {
+						var pre = this.cellNum-1;
+						
+						for (var j = this.cellNum-1;j >= 0;j--) {
+							if (j != pre && this.cellMartrix[i][pre].data == this.cellMartrix[i][j].data) {
+								/*
+								*合并cell事件
+								*/
+								if (this.cellMartrix[i][j].data != 0) {
+									this.cellMartrix[i][pre].data += this.cellMartrix[i][j].data;
+									s += this.cellMartrix[i][pre].data;
+									this.cellMartrix[i][pre].active = true;
+									this.cellMartrix[i][j].data = 0;
+									this.gameView.find('.grid-'+i+'-'+j).animate({
+										opacity: '0.0',
+										left: this.leftPos[pre]
+									},speed, function() {
+										/* stuff to do after animation is complete */
+										
+									});
+									this.gameView.find('.grid-'+i+'-'+j).remove();
+									this.gameView.find('.grid-'+i+'-'+pre).remove();
+									pre--;
+
+									this.canNewOne = true;
+								}
+							}
+							else if (this.cellMartrix[i][j].data != 0 && this.cellMartrix[i][pre].data != this.cellMartrix[i][j].data) {
+								if (this.cellMartrix[i][pre].data != 0) {
+									pre = pre -1;
+									if (pre != j) {
+										this.gameView.find('.grid-'+i+'-'+j).animate({
+										opacity: '0.0',
+										left: this.leftPos[pre]},
+										speed, function() {
+										/* stuff to do after animation is complete */
+										});
+										this.cellMartrix[i][pre].data = this.cellMartrix[i][j].data;
+										this.cellMartrix[i][j].data = 0;
+										this.canNewOne = true;
+									}
+									this.gameView.find('.grid-'+i+'-'+j).remove();
+								}
+								else if (this.cellMartrix[i][pre].data == 0) {
+									this.gameView.find('.grid-'+i+'-'+j).animate({
+										opacity: '0.0',
+										left: this.leftPos[pre]
+									},speed, function() {
+										
+									});
+									this.gameView.find('.grid-'+i+'-'+j).remove();
+									this.cellMartrix[i][pre].data = this.cellMartrix[i][j].data;
+									this.cellMartrix[i][j].data = 0;
+									this.cellMartrix[i][pre].active = false;
+
+									this.canNewOne = true;
+								}
+							}
+							else {
+								this.gameView.find('.grid-'+i+'-'+pre).remove();
+							}			
+						}
+					}
+					//console.log("s:"+s);
+					this.addPointEvent(s);
+				};
+				this.downEvent = function (speed) {
+					this.canNewOne = false;
+					var s = 0;
+					for (var i = 0;i < this.cellNum;i++) {
+						var pre = this.cellNum-1;
+						
+						for (var j = this.cellNum-1;j >= 0;j--) {
+							if (j != pre && this.cellMartrix[pre][i].data == this.cellMartrix[j][i].data) {
+								/*
+								*合并cell事件
+								*/
+								if (this.cellMartrix[j][i].data != 0) {
+									this.cellMartrix[pre][i].data += this.cellMartrix[j][i].data;
+									s += this.cellMartrix[pre][i].data;
+
+									this.cellMartrix[pre][i].active = true;
+									this.cellMartrix[j][i].data = 0;
+									this.gameView.find('.grid-'+j+'-'+i).animate({
+										opacity: '0.0',
+										top: this.topPos[pre]
+									},speed, function() {
+										/* stuff to do after animation is complete */
+										
+									});
+									this.gameView.find('.grid-'+j+'-'+i).remove();
+									this.gameView.find('.grid-'+pre+'-'+i).remove();
+									pre--;
+
+									this.canNewOne = true;
+
+								}
+							}
+							else if (this.cellMartrix[j][i].data != 0 && this.cellMartrix[pre][i].data != this.cellMartrix[j][i].data) {
+								if (this.cellMartrix[pre][i].data != 0) {
+									pre = pre -1;
+									if (pre != j) {
+										this.gameView.find('.grid'+j+'-'+i).animate({
+											opacity: '0.0',
+											top: this.topPos[pre]},
+											speed, function() {
+											/* stuff to do after animation is complete */
+										});
+										this.cellMartrix[pre][i].data = this.cellMartrix[j][i].data;
+										this.cellMartrix[j][i].data = 0;
+										this.canNewOne = true;
+									}
+									this.gameView.find('.grid-'+j+'-'+i).remove();
+								}
+								else if (this.cellMartrix[pre][i].data == 0) {
+									this.gameView.find('.grid-'+j+'-'+i).animate({
+										opacity: '0.0',
+										top: this.topPos[pre]
+									},speed, function() {
+										
+									});
+									this.gameView.find('.grid-'+j+'-'+i).remove();
+									this.cellMartrix[pre][i].data = this.cellMartrix[j][i].data;
+									this.cellMartrix[j][i].data = 0;
+									this.cellMartrix[pre][i].active = false;
+
+									this.canNewOne = true;
+								}
+							}
+							else {
+								this.gameView.find('.grid-'+pre+'-'+i).remove();
+							}			
+						}
+					}
+					//console.log("s:"+s);
+					this.addPointEvent(s);
+				};
+				this.upEvent = function (speed) {
+					this.canNewOne = false;
+					var s = 0;
+					for (var i = 0;i < this.cellNum;i++) {
+						var pre = 0;
+						
+						for (var j = 0;j < this.cellNum;j++) {
+							if (j != pre && this.cellMartrix[pre][i].data == this.cellMartrix[j][i].data) {
+								/*
+								*合并cell事件
+								*/
+								if (this.cellMartrix[j][i].data != 0) {
+									this.cellMartrix[pre][i].data += this.cellMartrix[j][i].data;
+									s += this.cellMartrix[pre][i].data;
+
+									this.cellMartrix[pre][i].active = true;
+									this.cellMartrix[j][i].data = 0;
+									this.gameView.find('.grid-'+j+'-'+i).animate({
+										opacity: '0.0',
+										top: this.topPos[pre]
+									},speed, function() {
+										/* stuff to do after animation is complete */
+									});
+									this.gameView.find('.grid-'+pre+'-'+i).remove();
+									this.gameView.find('.grid-'+j+'-'+i).remove();
+									pre++;
+
+									this.canNewOne = true;
+								}
+							}
+							else if (this.cellMartrix[j][i].data != 0 && this.cellMartrix[pre][i].data != this.cellMartrix[j][i].data) {
+								if (this.cellMartrix[pre][i].data != 0) {
+									pre = pre +1;
+									
+									if (pre != j) {
+										this.gameView.find('.grid'+j+'-'+i).animate({
+											opacity: '0.0',
+											top: this.topPos[pre]},
+											speed, function() {
+											/* stuff to do after animation is complete */
+										});
+										this.cellMartrix[pre][i].data = this.cellMartrix[j][i].data;
+										this.cellMartrix[j][i].data = 0;
+										this.canNewOne = true;
+									}
+									this.gameView.find('.grid-'+j+'-'+i).remove();
+		
+								}
+								else if (this.cellMartrix[pre][i].data == 0) {
+									this.gameView.find('.grid-'+j+'-'+i).animate({
+										opacity: '0.0',
+										top: this.topPos[pre]
+									},30, function() {
+
+									});
+									this.gameView.find('.grid-'+j+'-'+i).remove();
+									this.cellMartrix[pre][i].data = this.cellMartrix[j][i].data;
+									this.cellMartrix[j][i].data = 0;
+									this.cellMartrix[pre][i].active = false;
+
+									this.canNewOne = true;
+								}
+							}
+							else {
+								this.gameView.find('.grid-'+pre+'-'+i).remove();
+							}			
+						}
+					}
+					//console.log("s:"+s);
+					this.addPointEvent(s);
+				};
+				this.updateView = function () {
+					var full = true;
+					if(this.cellMartrix instanceof Array && this.cellMartrix[0] instanceof Array) {
+						for (var i = 0;i < this.cellNum;i++) {
+							for(var j = 0;j < this.cellNum;j++){
+								var number = this.cellMartrix[i][j];
+								if(!number.data) {
+									full = false;
+								}
+								else {
+									if (number.active) {						
+										this.gameView.append('<div class="grid-'
+											+i+'-'
+											+j+' val'
+											+number.data+ ' cell cellActive">'
+											+tagText["t"+number.data]
+											+'</div>');
+										number.active = false;
+									}
+									else if(number.isNew) {
+										this.gameView.append('<div class="grid-'
+											+i+'-'
+											+j+' val'
+											+number.data+' cell cellNew">'
+											+tagText["t"+number.data]
+											+'</div>');
+										number.isNew = false;
+									}
+									else 
+										this.gameView.append('<div class="grid-'
+											+i+'-'
+											+j+' val'
+											+number.data+' cell">'
+											+tagText["t"+number.data]
+											+'</div>');
+
+									if (number.data == 2048) {
+										this.Win();
+									}
+								}
+							}
+						}
+						this.scoreLabel.html(this.score);
+						LocalStorageManager.setBest(this.score);
+						LocalStorageManager.showBest($('#best'));
+
+						if(full) {
+							for (var i = this.cellNum - 1; i >= 0; i--) {
+								for (var j = this.cellNum - 1; j > 0; j--) {
+									if (this.cellMartrix[i][j].data == this.cellMartrix[i][j-1].data){
+										//console.log('=');
+										return;
+									}
+								};
+								for (var k = this.cellNum - 1; k > 0; k--) {
+									if (this.cellMartrix[k][i].data == this.cellMartrix[k-1][i].data){
+										//console.log('=');
+										return;
+									}
+								};
+							};
+							this.Lose();
+						}
+					}
+					else
+						throw new Error("Game.updateView() : cellMartrix is not invaluable");
+				};
+				this.newOneCell = function (callback) {
+					var blankCellArr = this.getBlankCell();
+					this.RandomPos(blankCellArr, function (ele) {
+						var x = ele.pos.x;
+						var y = ele.pos.y;
+						//console.log("newOneCell:"+x+','+y);
+						callback(x, y);
+					});
+
+				};
+				this.newOneCellCheck = function () {
+					
+					return this.canNewOne;
+				};
+				this.EventUtil = {
+					addHandler: function (element, type, handler) {
+						if (element.addEventListenner){
+							element.addEventListenner(type, handler, false);
+						}
+						else if (element.attachEvent) {
+							element.attachEvent("on"+type, handler);
+						}
+						else 
+							element["on"+type] = handler;
+					},
+					removeHandler: function (element, type, handler) {
+						if (element.addEventListenner) {
+							element.addEventListenner(type, handler, false);
+						}
+						else if(element.attachEvent) {
+							element.attachEvent(type, handler, false);
+						}
+						else
+							element["on"+type] = handler;
+					},
+					targetIsInput: function (event) {
+						event = window.event || event;
+						if (event.target) {
+							return event.target.tagName.toLowerCase() === "input";
+						}
+  						else if (event.srcElement) {
+  							return event.srcElement.tagName.toLowerCase() === "input";
+  						}
+					}
+				};
+				this.retry = function () {
+					var _this = this;
+					this.cellMartrix = Start.initCellArray(4, function (num) {
+						_this.cellNum = num;
+						_this.score = 0;
+					});
+					this.RandomPos(_this.cellMartrix, function (pos1, pos2) {
+						_this.setCellMartrix(pos1, pos2);
+					});
+					this.gameView.find('.cell').remove();
+					this.gameStateView.fadeOut('fast', function() {
+						_this.gameStateView.find('#win_part').hide();
+						_this.gameStateView.find('#lose_part').hide();
+					});
+					this.updateView();
+				};
+				this.Win = function () {
+					this.end = true;
+					this.isWin = true;
+
+					var _this = this;
+					this.gameStateView.fadeIn('slow', function() {
+						_this.gameStateView.find('#win_part').show();
+						_this.gameStateView.find('#lose_part').hide();
+					});
+					_this.EventUtil.addHandler(document.getElementById('p1_btn'), "click", function (e) {
+						$('#win_part').animate({
+							left: '-100%'
+							},
+							500, function() {
+							/* stuff to do after animation is complete */
+						});
+						WB2.anyWhere(function(W){
+							W.widget.connectButton({
+								id: "p2_btn",	
+								type:'7,5',
+								callback : {
+									login:function(o){	//登录后的回调函数
+										// alert("login: "+o.screen_name)
+										UserWBid = o.screen_name;
+										document.getElementById('userid').value = UserWBid;
+
+		
+console.log("WB:"+UserWBid);								$('#win_part').animate({
+											left: '-200%'
+											},
+											500, function() {
+											/* stuff to do after animation is complete */
+										});	
+										var urls = window.location.href;
+				
+										WB2.anyWhere(function(W){
+										    W.widget.publish({
+										        'id' : 'p3_btn',
+										        'default_text' : '我发现了一个好玩的游戏！分享给爱赢的你，参与F1 2014激情挑战赛，居然真的能赢到门票诶！一起来玩吧~http://game.aicyber.com/dhl.html',
+										        'default_image' : 'game.aicyber.com/image/weiboshare.jpg'
+										    });
+										});
+									},
+									logout:function(){	//退出后的回调函数
+
+									}
+								}
+							});
+						});
+					});
+					_this.EventUtil.addHandler(document.getElementById('p2_btn'), "click", function (e) {
+						$('#win_part').animate({
+											left: '-200%'
+											},
+											500, function() {
+											/* stuff to do after animation is complete */
+										});	
+
+					});
+					_this.EventUtil.addHandler(document.getElementById('p3_btn'), "click", function (e) {
+
+						 var objects = [
+					        function() { return new XMLHttpRequest() },
+					        function() { return new ActiveXObject("MSxml2.XMLHHTP") },
+					        function() { return new ActiveXObject("MSxml3.XMLHHTP") },
+					        function() { return new ActiveXObject("Microsoft.XMLHTTP") }
+					    ];
+					    function XHRobject() {
+					        var xhr = false;
+					        for(var i=0; i < objects.length; i++) {
+					            try {
+					                xhr = objects[i]();
+					            }
+					            catch(e) {
+					                continue;
+					            }
+					            break;
+					        }
+					        return xhr;
+					    }
+					    var xhr = XHRobject();
+					    xhr.open("POST", "http://127.0.0.1:3001/dhl", true);
+
+					    xhr.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+
+					    xhr.onreadystatechange = function () {
+					    	if (xhr.readyState==4 && xhr.status==200){
+								// alert(xhr.responseText);
+						    }
+					    }
+					    var sendData = getSendData(document.getElementById('userid'), document.getElementById('phone'), this);
+					    var sendStr = "userId="+sendData.userid+"&phone="+sendData.phone+"&score="+sendData.score+"&isWin"+sendData.isWin+"&from="+sendData.from;
+
+					    xhr.send(sendStr);
+
+						$('#win_part').animate({
+							left: '-300%'
+							},
+							500, function() {
+							/* stuff to do after animation is complete */
+						});
+					});
+
+					_this.EventUtil.addHandler(document.getElementById('retry_Btn'), "click", function (e) {
+						_this.retry();   
+						_this.end = false;
+						_this.gameStateView.find('#win_part').hide();
+						console.log("click");
+					});
+				};
+				this.Lose = function () {
+					this.end = true;
+					this.isWin = false;
+
+					var _this = this;
+					var loseText = ["哎呀!你输了!", "车开丢啦？到底行不行啊？", "据说速度不够快的人，连女朋友都追不上", "胜败乃兵家常事!"];
+
+					this.gameStateView.fadeIn('slow', function() {
+						_this.gameStateView.find('#lose_part').children('p').html(loseText[_this.random(4)-1]);
+						$('#retryBtn').html("直接Try again");
+						
+						_this.gameStateView.find('#lose_part').show();
+						_this.gameStateView.find('#win_part').hide();
+						WB2.anyWhere(function(W){
+							W.widget.connectButton({
+								id: "login_btn",	
+								type:'7,5',
+								callback : {
+									login:function(o){	//登录后的回调函数
+										// alert("login: "+o.screen_name)
+										UserWBid = o.screen_name;
+console.log("WB:"+UserWBid);										document.getElementById('userid').value = UserWBid;
+								
+										var urls = window.location.href;
+										$('#weibo').show('400', function() {
+											WB2.anyWhere(function(W){
+										    W.widget.publish({
+										        'id' : 'weibo',
+										        'default_text' : '我发现了一个好玩的游戏！分享给爱赢的你，参与F1 2014激情挑战赛，居然真的能赢到门票诶！一起来玩吧~'+urls,
+										        'default_image' : ''
+										    });
+										});
+										});
+										
+									},
+									logout:function(){	//退出后的回调函数
+
+									}
+								}
+							});
+						});
+					});
+					_this.EventUtil.addHandler(document.getElementById('retryBtn'), "click", function (e) {
+						_this.retry();
+
+						_this.end = false;
+					});
+				}
+			}
+
+			function outputMartrixTest(martrix, len) {
+				for(var i = 0;i < len;i++) {
+					for(var j = 0;j< len;j++) {
+						//console.log('martrix['+i+']['+j+']:' + martrix[i][j].data);
+					}
+				}
+			}
+
+			function checkScreen() {
+
+				var viewport = document.getElementById("viewport");
+
+				if (document.body.clientWidth >= 964) {
+					viewport.content = "initial-scale=0.6, minimum-scale=0.5, maximum-scale=1.5, user-scalable=no, target-densitydpi=high-dpi";
+					
+				}
+				else if (document.body.clientWidth < 964) {
+					viewport.content = "initial-scale=0.1, minimum-scale=0.1, maximum-scale=1.0, user-scalable=no, target-densitydpi=250";
+				}
+			} 
+	
+			var TouchEvent = {
+				isNotPC: function () {
+					var userAgentInfo = navigator.userAgent; 
+					var Agents = new Array("Android", "iPhone", "SymbianOS", "Windows Phone", "iPad", "iPod"); 
+					var flag = false; 
+					for (var v = 0; v < Agents.length; v++) { 
+						if (userAgentInfo.indexOf(Agents[v]) > 0) { 
+							flag = true; 
+							break; 
+						} 
+					} 
+					return flag; 
+				},
+				fixTouch: function (touch) {
+				    var winPageX = window.pageXOffset,
+				        winPageY = window.pageYOffset,
+				        x = touch.clientX,
+				        y = touch.clientY;
+
+				    if (touch.pageY === 0 && Math.floor(y) > Math.floor(touch.pageY) ||
+				        touch.pageX === 0 && Math.floor(x) > Math.floor(touch.pageX)) {
+				        // iOS4 clientX/clientY have the value that should have been
+				        // in pageX/pageY. While pageX/page/ have the value 0
+				        x = x - winPageX;
+				        y = y - winPageY;
+				    } else if (y < (touch.pageY - winPageY) || x < (touch.pageX - winPageX) ) {
+				        // Some Android browsers have totally bogus values for clientX/Y
+				        // when scrolling/zooming a page. Detectable since clientX/clientY
+				        // should never be smaller than pageX/pageY minus page scroll
+				        x = touch.pageX - winPageX;
+				        y = touch.pageY - winPageY;
+				    }
+
+				    return {
+				        clientX:    x,
+				        clientY:    y
+				    };
+				},
+				init: function (div, game) {
+					this.touch = this.isNotPC();
+					this.Start = this.touch ? "touchstart" : "mousedown";
+					this.End = this.touch ? "touchend" : "mouseup";
+					this.Move = this.touch ? "touchmove" : "mousemove";
+					this.mainDiv = document.getElementById(div);
+					this.bind(game);
+				},
+				bind: function (game) {
+					var x1, x2, y1, y2;
+					var t = this;
+					var isMove = false;
+
+					game.EventUtil.addHandler(t.mainDiv, t.Start, function (e) {
+						e = window.event || e;
+						Event.preventDefault(e);
+						var touch = t.touch ? e.touches[0] : e;
+						touch = t.fixTouch(touch);
+
+						x1 = touch.clientX;
+						y1 = touch.clientY;
+					});
+
+					game.EventUtil.addHandler(t.mainDiv, t.Move, function (e) {
+						isMove = true;
+						e = window.event || e;
+						Event.preventDefault(e);
+							
+						var touch = t.touch ? e.touches[0] : e;
+						touch = t.fixTouch(touch);
+						x2 = touch.clientX;
+						y2 = touch.clientY;
+					});
+
+					game.EventUtil.addHandler(t.mainDiv, t.End, function (e) {
+						if (isMove) {
+							if (Math.abs(x1-x2) > Math.abs(y1-y2)) {
+								//left or right
+								if ((x1-x2) < -50) { //right
+									game.rightEvent(40);
+									if (game.newOneCellCheck())
+										game.newOneCell(function (x, y){
+											game.setCell(x, y, true);
+										});
+									game.updateView();
+								}
+								else if((x1-x2) > 50) { //left
+									game.leftEvent(40);
+									if (game.newOneCellCheck())
+										game.newOneCell(function (x, y){
+											game.setCell(x, y, true);
+										});
+									game.updateView();
+								}
+							}
+							else {
+										// up or down
+								if(y1-y2 > 50) { //up
+									game.upEvent(40);
+									if (game.newOneCellCheck())
+										game.newOneCell(function (x, y){
+											game.setCell(x, y, true);
+										});
+									game.updateView();
+								}
+								else if (y1-y2 < -50){ //down
+									game.downEvent(40);
+									if (game.newOneCellCheck())
+										game.newOneCell(function (x, y){
+											game.setCell(x, y, true);
+										});
+									game.updateView();
+									
+								}
+							}
+							isMove = false;
+						}
+						
+					});
+				}
+			};
+
+			function getSendData(useridEle, phoneEle, game) {
+				var url = window.location.href;
+				var fromNo = url.substr(url.length-1);//微信是1 微博是2
+				if (fromNo == '1') {
+					fromNo = 'WX';
+				}
+				else if (fromNo == '2') {
+					fromNo = 'WB';
+				}
+
+				var data = {
+					userid: useridEle.value,
+					phone: phoneEle.value,
+					score: game.score,
+					isWin: game.isWin,
+					from: fromNo
+				}
+
+				return data;
+			}
+
+			(function () {
+				$(document).ready(function($) {
+					if (TouchEvent.isNotPC()) {
+						window.location.href = "http://game.aicyber.com/dhlph_wb.html##2";
+						return;
+					}
+					else {
+
+						$('#contain').bind('selectstart', function(event) {
+							/* Act on the event */
+							return false;
+						});
+						$('#newGame').bind('selectstart', function (event) {
+							return false;
+						});
+
+						checkScreen();
+
+						var newGame = document.getElementById('newGame');
+
+						var game = new Game();
+
+						game.setGameView('#contain');
+						game.scoreView = $('#score_Div');
+						game.scoreLabel = $('#score');
+						game.gameStateView = $('#gameState_Div');
+
+						game.cellMartrix = Start.initCellArray(4, function (num) {
+							game.cellNum = num;
+						});
+						game.RandomPos(game.cellMartrix, function (pos1, pos2) {
+							game.setCellMartrix(pos1, pos2);
+						});
+						game.updateView();
+
+						TouchEvent.init("contain", game);
+
+						// game.Win();
+						// game.Lose();
+						
+
+						game.EventUtil.addHandler(newGame, "click", function (event) {
+							game.retry();
+							game.end = false;
+						});
+
+						game.EventUtil.addHandler(document, "keyup", function (event) {
+							// event = window.event || event;
+							Event.preventDefault(event);
+							Event.stopPropagation(event);
+
+							if (game.EventUtil.targetIsInput(event)) 
+								return;
+							if (event.keyCode == '37' && !game.end) { // left
+								game.leftEvent(40);
+								if (game.newOneCellCheck())
+									game.newOneCell(function (x, y){
+										game.setCell(x, y, true);
+									});
+								game.updateView();
+
+								return false;
+							}
+							else if (event.keyCode == '38' && !game.end) { // up
+								Event.preventDefault(event);
+
+								game.upEvent(40);
+								if (game.newOneCellCheck())
+									game.newOneCell(function (x, y){
+										game.setCell(x, y, true);
+									});
+								game.updateView();
+
+								return false;
+							}
+							else if (event.keyCode == '39' && !game.end) { // right
+								game.rightEvent(40);
+								if (game.newOneCellCheck())
+									game.newOneCell(function (x, y){
+										game.setCell(x, y, true);
+									});
+								game.updateView();
+
+								return false;
+							}
+							else if (event.keyCode == '40' && !game.end) { // down
+								Event.preventDefault(event);
+
+								game.downEvent(40);
+								if (game.newOneCellCheck())
+									game.newOneCell(function (x, y){
+										game.setCell(x, y, true);
+									});
+								game.updateView();
+
+								return false;
+							}
+						});
+
+						var urls = window.location.href;
+					
+						WB2.anyWhere(function(W){
+						    W.widget.publish({
+						        'id' : 'login_btn',
+						        'default_text' : '我发现了一个好玩的游戏！分享给爱赢的你，参与F1 2014激情挑战赛，居然真的能赢到门票诶！一起来玩吧~'+urls,
+						        'default_image' : ''
+						    });
+						});
+					}
+				});
+			})();
+ 
+		</script>
+	</head>
+	<body>
+		<div id="preload"></div>
+		<img src="./image/wxlogo.png" width="0" height="0"/>
+		<div id="back_Div">
+			<div id="header">
+				<h2>F1极速送达挑战赛</h2>
+				<p>两个站点碰到一起到达下一站</br>直到两个
+阿布扎比碰撞出现F1奖杯！有惊喜！</p>
+				<div id="score_Div">
+					<a>SCORE</a>
+					<a id="score">0</a>
+				</div>
+				<div id="best_Div">
+					<a>BEST</a>
+					<a id="best">0</a>
+				</div>
+				<div id="newGame">NEW GAME</div>
+			</div>
+			<div id="contain">
+				<div class="grid_line">
+					<div class="cell1" onselectstart="return false"></div>
+					<div class="cell2" onselectstart="return false"></div>
+					<div class="cell3" onselectstart="return false"></div>
+					<div class="cell4" onselectstart="return false"></div>
+				</div>
+				<div class="grid_line">
+					<div class="cell1" onselectstart="return false"></div>
+					<div class="cell2" onselectstart="return false"></div>
+					<div class="cell3" onselectstart="return false"></div>
+					<div class="cell4" onselectstart="return false"></div>
+				</div>
+				<div class="grid_line">
+					<div class="cell1" onselectstart="return false"></div>
+					<div class="cell2" onselectstart="return false"></div>
+					<div class="cell3" onselectstart="return false"></div>
+					<div class="cell4" onselectstart="return false"></div>
+				</div>
+				<div class="grid_line">
+					<div class="cell1" onselectstart="return false"></div>
+					<div class="cell2" onselectstart="return false"></div>
+					<div class="cell3" onselectstart="return false"></div>
+					<div class="cell4" onselectstart="return false"></div>
+				</div>
+			</div>
+			<div id="gameState_Div">
+				<div id="lose_part">
+					<p></p>
+					<a id="retryBtn"></a>
+					<div id="shareBtn_Div">
+						<!-- <div id="login_btn"></div>						 -->
+						<wb:publish id="login_btn" button_type="gray" button_size="middle" button_text="微博分享" >微博发布</wb:publish>
+					</div>
+					<div id="state" class="inputText">
+					
+					</div>
+				</div>
+				<div id="win_part">
+					<div class="p1">
+						<p>Wo，成功送达！</br>一路上很刺激吧！</p>
+						<a id="p1_btn">提交战记赢大奖</br>
+							<span>4月13日-4月20日</span>
+						</a>
+					</div>
+					<div class="p2">
+						<p>提交战记要先登录哦~</p>
+						<div id="p2_btn"></div>
+					</div>
+					<div class="p3">
+	                    <input id="userid" type="text" value="" name="" placeholder="您的sina微博昵称" spellcheck="false" disabled>
+                   		<input id="phone" type="text" value="" name="" placeholder="您的手机号" spellcheck="false">
+                   		<a id="p3_btn">分享~</a>
+                   	</div>
+					<div class="p4">
+						<p>你的手机号太帅了!</br>等我电话！</p>
+						<a id="retry_Btn">再玩一次？</a>
+					</div>
+				</div>
+			</div>
+			<div id="footer">
+				<p><span>玩法</span>：上下左右滑动，将两个DHL合成后出现第一站，相同站名重合到达下一站，直到冠军奖杯（2048）出现！</p>
+				<hr>
+				<p> 你将和DHL一起，从首站澳大利亚开始，途径中国、西班牙、英国、德国、比利时、新加坡、俄罗斯、阿布扎比，最终送达阿布扎比！（2014赛季19站中精选9站）</p>
+				<hr>
+				<p>阿布扎比+阿布扎比=F1奖杯，标志着游戏过关，提交手机号并分享将有机会获得F1限量好礼！</p>
+				</br>
+			</div>
+		</div>
+ 
+
+
+	</body>
+</html>

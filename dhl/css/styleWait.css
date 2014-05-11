@@ -1,4 +1,4 @@
-html {
+﻿html {
 				-moz-user-select: none;
 				-khtml-user-select: none;
 				user-select: none;
@@ -643,7 +643,7 @@ html {
 		left: 0;
 		top: 0px;
 		height: 300px;
-		width: 300%;
+		width: 400%;
 	}
 
 	#win_part input {
@@ -686,13 +686,17 @@ html {
 		position: absolute;
 		left: 0;
 	}
-	#win_part .p3 {
+	#win_part .p2 {
 		position: absolute;
 		left: 482px;
 	}
-	#win_part .p4 {
+	#win_part .p3 {
 		position: absolute;
 		left: 964px;
+	}
+	#win_part .p4 {
+		position: absolute;
+		left: 1446px;
 	}
 	#win_part #p2_btn a {
 		line-height: 70px;
@@ -751,7 +755,7 @@ html {
 	}
 	#shareBtn_Div #login_btn {
 		position: absolute;
-		left: 100px;
+		left: 200px;
 		z-index: 50;
 	}
 	#shareBtn_Div a {
